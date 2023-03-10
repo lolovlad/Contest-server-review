@@ -1,0 +1,1 @@
+python3 -m grpc_tools.protoc -I=. --python_out=./MainServer/Services/protos --grpc_python_out=./MainServer/Services/protos MainServer/Models/protos/settings.proto
