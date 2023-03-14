@@ -7,6 +7,9 @@ if __name__ == "__main__":
     try:
         loop.run_until_complete(serve())
     finally:
-        loop.run_until_complete(*cleanup_coroutines)
-        loop.close()
+        try:
+            loop.run_until_complete(*cleanup_coroutines)
+            loop.close()
+        except TypeError:
+            loop.close()
     asyncio.run(serve())

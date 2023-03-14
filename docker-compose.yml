@@ -1,0 +1,12 @@
+version: '3'
+services:
+  microservice-answer:
+    container_name: "microservice-answer"
+    image: microservice-answer
+    env_file:
+      - settings_server.env
+    build:
+      context: .
+      dockerfile: DockerFile
+    ports:
+      - "50001:50001"
