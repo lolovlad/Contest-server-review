@@ -3,10 +3,11 @@ from json import dump, loads, load
 
 from os import chdir, getcwd
 from typing import List
+import asyncio
 
 from MainServer.Models.TaskTestSettings import FileTaskTest, CheckType
-from MainServer.tables import Answer, Task
-from MainServer.database import Session
+from MainServer.tables import Answer, Task, TypeCompilation
+from MainServer.database import AsySession
 
 from .InputData import InputData
 from .StartFileProgram import StartFileProgram
@@ -20,30 +21,35 @@ from .Models.ReportTesting import Rating
 
 from ..PathExtend import PathExtend
 
-
-def create_checking_answer(answer: int):
-    thread_answer = threading.Thread(target=check_answer, args=(answer,))
-    thread_answer.start()
+from sqlalchemy import select
+from threading import Thread
 
 
-class CheckingAnswer:
+class CheckingAnswer(Thread):
     def __init__(self, test: FileTaskTest,
                  type_input: int,
                  type_output: int,
                  timeout: int,
                  size: int,
                  path_compiler: str,
+                 path: PathExtend,
                  file_answer: str):
+        super().__init__()
         self.__test: FileTaskTest = test
         self.__type_input = type_input
         self.__type_output = type_output
         self.__timeout = timeout
         self.__path_compiler = path_compiler
+        self.__path = path
         self.__file_answer = PathExtend(file_answer)
         self.__graf = {}
-        '''self.__report: Report = Report()'''
+        self.__test_report = []
         self.__grading: Grading = Grading(size)
         self.__GRADING: List[str] = ["OK", "CE", "WA", "PE", "TL", "ML", "OL", "RE", "PCF", "IL"]
+
+    @property
+    def test_report(self):
+        return self.__test_report
 
     def __testing_programme(self, start_node, test_report, program_file, path_test: PathExtend, is_error: bool):
         visited = [False] * len(self.__graf)
@@ -78,7 +84,7 @@ class CheckingAnswer:
                     answer = "".join(answer)
 
                     grading = self.__grading.grading(information.out == answer, information.errors,
-                                                     information.time, information.memory)
+                                                         information.time, information.memory)
 
                     test_report[id_chunk_test].list_test_report.append(self.__GRADING[grading.value - 1])
 
@@ -115,8 +121,9 @@ class CheckingAnswer:
             for i in self.__test.setting_tests[v].settings_test.necessary_test:
                 self.__graf[i].add(v)
 
-    def start_examination(self, path: PathExtend):
+    def run(self):
         self.__create_graf()
+        self.__test_report = [TestReport() for _ in range(len(self.__graf))]
         virtual_environment = VirtualEnvironment()
         virtual_environment.create_virtual_folder()
         input_data = InputData(virtual_environment.path_virtual_environment)
@@ -135,13 +142,9 @@ class CheckingAnswer:
 
         program_file = StartFileProgram(virtual_environment, input_data, output_data, compiler)
 
-        test_report = [TestReport() for _ in range(len(self.__graf))]
-
-        self.__testing_programme(0, test_report, program_file, path, is_error)
+        self.__testing_programme(0, self.__test_report, program_file, self.__path, is_error)
 
         virtual_environment.destruction_virtual_folder()
-
-        return test_report
 
 
 def create_report_to_answer(report):
@@ -162,12 +165,18 @@ def get_model_json(path: PathExtend):
     return path, file_json
 
 
-def check_answer(answer_id: int):
-    with Session() as session:
-        answer = session.query(Answer).filter(Answer.id == answer_id).first()
-        task = session.query(Task).filter(Task.id == answer.id_task).first()
+async def check_answer(answer_id: int):
+    async with AsySession() as session:
+        answer_corun = await session.execute(select(Answer, TypeCompilation).join(Answer.compilation).where(Answer.id == answer_id))
+        answer = answer_corun.first()[0]
+
+        task_corun = await session.execute(select(Task).where(Task.id == answer.id_task))
+
+        task = task_corun.first()[0]
 
         path_file_test = task.path_files
+
+        yield True
 
         dir_path_file = PathExtend(answer.path_programme_file).path_file()
 
@@ -177,12 +186,26 @@ def check_answer(answer_id: int):
         size = task.size_raw
         path, test = get_model_json(PathExtend(path_file_test))
 
-        checking_answer = CheckingAnswer(test, type_input, type_output,
-                                         timeout, size, answer.compilation.path_commands, answer.path_programme_file)
+        checking_answer = CheckingAnswer(test,
+                                         type_input,
+                                         type_output,
+                                         timeout,
+                                         size,
+                                         answer.compilation.path_commands,
+                                         path,
+                                         answer.path_programme_file)
 
-        answer_json = checking_answer.start_examination(path)
-
+        yield True
+        checking_answer.start()
+        #answer_json = await checking_answer.start_examination(path)
+        while True:
+            if checking_answer.is_alive():
+                yield True
+                await asyncio.sleep(1)
+            else:
+                break
         reports = Report()
+        answer_json = checking_answer.test_report
         reports.list_report = answer_json
 
         path_file_report = f"{dir_path_file}/{PathExtend.create_file_name('json')}"
@@ -196,6 +219,8 @@ def check_answer(answer_id: int):
         times = []
         memory = []
         answers = []
+
+        yield True
 
         for i in answer_json:
 
@@ -214,4 +239,5 @@ def check_answer(answer_id: int):
         answer.points = points
         answer.number_test = answer_json[-1].number_test
         answer.time = f"{int(sum(times) / len(times))} ms"
-        session.commit()
+        await session.commit()
+        yield False

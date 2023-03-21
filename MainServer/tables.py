@@ -52,4 +52,4 @@ class Answer(base):
     path_report_file = Column(String, nullable=False, default="None")
     path_programme_file = Column(String, nullable=False)
 
-    compilation = relationship('TypeCompilation', backref='type_compilation', lazy=True)
+    compilation = relationship('TypeCompilation', backref='type_compilation', lazy='joined')

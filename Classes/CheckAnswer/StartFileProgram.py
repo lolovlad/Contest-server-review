@@ -26,8 +26,8 @@ class StartFileProgram:
 
     def start_process(self, input_in_process, time_out: int) -> ReportTesting:
         input_data = self.__input_stream.start_stream(input_in_process)
+        self.__create_sub_proces()
         try:
-            self.__create_sub_proces()
             memory = []
             start_time = time.time()
             outs = self.__process.communicate(input=input_data, timeout=time_out)

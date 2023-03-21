@@ -6,10 +6,11 @@ from Classes.PathExtend import PathExtend
 from ..Models.TaskTestSettings import FileTaskTest
 
 from sqlalchemy.orm.session import Session
+from sqlalchemy import func
 from json import load, dumps
 from datetime import datetime
 
-from Classes.CheckAnswer.CheckingAnswers import create_checking_answer
+from Classes.CheckAnswer.CheckingAnswers import check_answer
 
 
 class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
@@ -53,9 +54,10 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
 
         session.add(answer)
         session.commit()
-        create_checking_answer(answer.id)
+        async for response in check_answer(answer.id):
+            print(response, "programme")
+            yield answer_pb2.SendAnswerCodeResponse(code="200")
         session.close()
-        return answer_pb2.SendAnswerCodeResponse(code="200")
 
     async def GetListAnswersTask(self, request, context):
         session = get_session()
@@ -90,7 +92,38 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
         return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers)
 
     async def GetAnswersContest(self, request, context):
-        pass
+        session = get_session()
+        ans = session.query(Answer).\
+            filter(Answer.id_contest == request.id_contest).\
+            filter(Answer.id_user == request.id).first()
+        if ans is not None:
+            if ans.id_team == 0:
+                answers = session.query(Answer, func.max(Answer.points)) \
+                    .where(Answer.id_contest == request.id_contest).where(Answer.id_user == request.id).group_by(Answer.id_task).all()
+            else:
+                answers = session.query(Answer, func.max(Answer.points)) \
+                    .where(Answer.id_contest == request.id_contest).where(Answer.id_team == ans.id_team).group_by(Answer.id_task).all()
+        else:
+            answers = []
+        proto_answers = []
+        for answer, points in answers:
+            date: datetime = answer.date_send
+            proto_answers.append(answer_pb2.Answer(
+                date_send=date.isoformat(),
+                id=answer.id,
+                id_team=answer.id_team,
+                id_user=answer.id_user,
+                id_task=answer.id_task,
+                id_contest=answer.id_contest,
+                name_compilation=answer.compilation.name_compilation,
+                total=answer.total,
+                time=answer.time,
+                memory_size=str(answer.memory_size),
+                number_test=answer.number_test,
+                points=points,
+            ))
+        session.close()
+        return answer_pb2.GetAnswersContestResponse(answers=proto_answers)
 
     async def GetReportFile(self, request, context):
         session = get_session()

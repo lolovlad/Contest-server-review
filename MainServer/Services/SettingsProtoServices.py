@@ -23,6 +23,7 @@ class SettingsProtoServices(settings_pb2_grpc.SettingsApiServicer):
         return settings_pb2.CodeResponse(code="200")
 
     async def SettingsGet(self, request, context):
+        print("settingsGetStart")
         session = get_session()
         task = session.query(Task).filter(Task.id == request.id).first()
 
@@ -36,6 +37,7 @@ class SettingsProtoServices(settings_pb2_grpc.SettingsApiServicer):
                                          number_shipments=task.number_shipments,
                                          name_file=list_files)
         session.close()
+        print("settingsGetEnd")
         return settings_pb2.GetSettingsResponse(settings=settings)
 
     async def SettingsDelete(self, request, context):
