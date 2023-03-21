@@ -89,7 +89,7 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
                 points=answer.points,
             ))
         session.close()
-        return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers)
+        return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers[::-1])
 
     async def GetAnswersContest(self, request, context):
         session = get_session()
