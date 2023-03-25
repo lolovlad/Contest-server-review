@@ -24,6 +24,8 @@ from ..PathExtend import PathExtend
 from sqlalchemy import select
 from .Models.Settings import Settings
 
+from MainServer.Repositories import AnswerRepository, TaskRepository
+
 
 class CheckingAnswer:
     def __init__(self, file_settings_task: FileTaskTest, settings: Settings):
@@ -155,7 +157,7 @@ class CheckingAnswer:
             self.__test_report[0].list_test_report.append("PCF")
             self.__test_report[0].time.append(0)
             self.__test_report[0].memory.append(0)
-            self.__test_report[0].state_test="error"
+            self.__test_report[0].state_test = "error"
             return False
 
     def destruction(self):
@@ -181,13 +183,9 @@ def get_model_json(path: PathExtend):
 
 
 async def check_answer(answer_id: int):
-    async with AsySession() as session:
-        answer_corun = await session.execute(select(Answer, TypeCompilation).join(Answer.compilation).where(Answer.id == answer_id))
-        answer = answer_corun.first()[0]
-
-        task_corun = await session.execute(select(Task).where(Task.id == answer.id_task))
-
-        task = task_corun.first()[0]
+    with AsySession() as session:
+        answer = await AnswerRepository(session).get(answer_id)
+        task = await TaskRepository(session).get(answer.id_task)
 
         path_file_test = task.path_files
 
@@ -232,7 +230,6 @@ async def check_answer(answer_id: int):
         yield True
 
         for i in answer_json:
-
             points += i.point_sum
             answers += i.list_test_report
             times += i.time
