@@ -1,20 +1,22 @@
 from .protos import file_pb2, file_pb2_grpc
 from ..settings import settings
 from Classes.PathExtend import PathExtend
-from ..database import get_session
 from ..tables import Task
+from ..Repositories import TaskRepository
 
 
 class FileProtoService(file_pb2_grpc.FileApiServicer):
-    async def UploadFile(self, request_iterator, context):
-        session = get_session()
 
+    def __init__(self):
+        super().__init__()
+        self.__repository: TaskRepository = TaskRepository()
+
+    async def UploadFile(self, request_iterator, context):
         data = bytearray()
         filepath = settings.static_path
-
         async for request in request_iterator:
             if request.metadata.name and request.metadata.extend:
-                task = session.query(Task).filter(Task.id == request.metadata.id_task).first()
+                task = await self.__repository.get(request.metadata.id_task)
                 if request.metadata.extend == "json":
                     filepath = PathExtend(task.path_files)
                     filepath.delete_files_in_folder(f".{request.metadata.extend}")
@@ -22,14 +24,12 @@ class FileProtoService(file_pb2_grpc.FileApiServicer):
                 filepath = PathExtend(task.path_files, file_name)
                 continue
             data.extend(request.file.byte_chunk)
-
-        filepath.write_file(data, "wb")
+            filepath.write_file(data, "wb")
         return file_pb2.StringResponse(code="200")
 
     async def DeleteFile(self, request, context):
-        session = get_session()
         file_name = f"{request.name}.{request.extend}"
-        task = session.query(Task).filter(Task.id == request.metadata.id_task).first()
+        task = await self.__repository.get(request.metadata.id_task)
         filepath = PathExtend(task.path_files, file_name)
         filepath.delete_file()
         return file_pb2.StringResponse(code="200")

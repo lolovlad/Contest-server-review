@@ -7,7 +7,6 @@ from typing import List, Set
 
 from MainServer.Models.TaskTestSettings import FileTaskTest, CheckType, TypeTest, ChunkTest
 from MainServer.tables import Answer, Task, TypeCompilation
-from MainServer.database import AsySession
 
 from .InputData import InputData
 from .StartFileProgram import StartFileProgram
@@ -21,9 +20,8 @@ from .Models.ReportTesting import Rating
 
 from ..PathExtend import PathExtend
 
-from sqlalchemy import select
 from .Models.Settings import Settings
-
+from MainServer.Repositories import AnswerRepository, TaskRepository
 
 class CheckingAnswer:
     def __init__(self, file_settings_task: FileTaskTest, settings: Settings):
@@ -181,72 +179,68 @@ def get_model_json(path: PathExtend):
 
 
 async def check_answer(answer_id: int):
-    async with AsySession() as session:
-        answer_corun = await session.execute(select(Answer, TypeCompilation).join(Answer.compilation).where(Answer.id == answer_id))
-        answer = answer_corun.first()[0]
+    repo = AnswerRepository()
+    answer = await repo.get(answer_id)
+    task = await TaskRepository().get(answer.id_task)
 
-        task_corun = await session.execute(select(Task).where(Task.id == answer.id_task))
+    path_file_test = task.path_files
 
-        task = task_corun.first()[0]
+    yield True
 
-        path_file_test = task.path_files
+    dir_path_file = PathExtend(answer.path_programme_file).path_file()
+    path, test = get_model_json(PathExtend(path_file_test))
 
-        yield True
+    settings = Settings()
+    settings.type_input = task.type_input
+    settings.type_output = task.type_output
+    settings.timeout = task.time_work
+    settings.max_size_memory = int(task.size_raw)
+    settings.path_compiler = answer.compilation.path_commands
+    settings.path_file_test = path.abs_path()
+    settings.path_file_answer = answer.path_programme_file
 
-        dir_path_file = PathExtend(answer.path_programme_file).path_file()
-        path, test = get_model_json(PathExtend(path_file_test))
+    checking_answer = CheckingAnswer(file_settings_task=test,
+                                     settings=settings)
 
-        settings = Settings()
-        settings.type_input = task.type_input
-        settings.type_output = task.type_output
-        settings.timeout = task.time_work
-        settings.max_size_memory = int(task.size_raw)
-        settings.path_compiler = answer.compilation.path_commands
-        settings.path_file_test = path.abs_path()
-        settings.path_file_answer = answer.path_programme_file
+    yield True
+    is_create = await checking_answer.create()
+    if is_create:
+        await checking_answer.testing_programme()
+    checking_answer.destruction()
+    reports = Report()
+    answer_json = checking_answer.test_report
+    reports.list_report = answer_json
 
-        checking_answer = CheckingAnswer(file_settings_task=test,
-                                         settings=settings)
+    path_file_report = f"{dir_path_file}/{PathExtend.create_file_name('json')}"
 
-        yield True
-        is_create = await checking_answer.create()
-        if is_create:
-            await checking_answer.testing_programme()
-        checking_answer.destruction()
-        reports = Report()
-        answer_json = checking_answer.test_report
-        reports.list_report = answer_json
+    with open(path_file_report, 'w') as outfile:
+        dump(loads(reports.json()), outfile, indent=6)
 
-        path_file_report = f"{dir_path_file}/{PathExtend.create_file_name('json')}"
+    answer.path_report_file = path_file_report
 
-        with open(path_file_report, 'w') as outfile:
-            dump(loads(reports.json()), outfile, indent=6)
+    points = 0
+    times = []
+    memory = []
+    answers = []
 
-        answer.path_report_file = path_file_report
+    yield True
 
-        points = 0
-        times = []
-        memory = []
-        answers = []
+    for i in answer_json:
+        points += i.point_sum
+        answers += i.list_test_report
+        times += i.time
+        memory += i.memory
 
-        yield True
+    answer.total = "OK"
 
-        for i in answer_json:
+    for i in answers:
+        if i != "OK":
+            answer.total = i
 
-            points += i.point_sum
-            answers += i.list_test_report
-            times += i.time
-            memory += i.memory
-
-        answer.total = "OK"
-
-        for i in answers:
-            if i != "OK":
-                answer.total = i
-
-        answer.memory_size = round(sum(memory) / len(memory), 3)
-        answer.points = points
-        answer.number_test = answer_json[-1].number_test
-        answer.time = f"{int(sum(times) / len(times))} ms"
-        await session.commit()
-        yield False
+    answer.memory_size = round(sum(memory) / len(memory), 3)
+    answer.points = points
+    answer.number_test = answer_json[-1].number_test
+    answer.time = f"{int(sum(times) / len(times))} ms"
+    answer.is_completed = True
+    await repo.update(answer)
+    yield False

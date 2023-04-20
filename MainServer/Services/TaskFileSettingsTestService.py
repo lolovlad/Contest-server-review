@@ -1,7 +1,7 @@
 from .protos import jsonTest_pb2, jsonTest_pb2_grpc
-from ..settings import settings
+
 from Classes.PathExtend import PathExtend
-from ..database import get_session
+from ..Repositories import TaskRepository
 from ..tables import Task
 from ..Models.TaskTestSettings import FileTaskTest
 
@@ -9,6 +9,11 @@ from json import load
 
 
 class TaskFileSettingsTestService(jsonTest_pb2_grpc.JsonTestApiServicer):
+
+    def __init__(self):
+        super().__init__()
+        self.__repository: TaskRepository = TaskRepository()
+
     async def __find_json_file(self, path: PathExtend):
         for name in path.list_file_in_folder():
             if name.endswith("json"):
@@ -16,13 +21,11 @@ class TaskFileSettingsTestService(jsonTest_pb2_grpc.JsonTestApiServicer):
         return ""
 
     async def __get_model_json(self, id_task: int):
-        session = get_session()
-        task = session.query(Task).filter(Task.id == id_task).first()
+        task = await self.__repository.get(id_task)
         path = PathExtend(task.path_files)
         filename = await self.__find_json_file(path)
         with open(filename.abs_path(), "r") as file:
             file_json = FileTaskTest(**load(file))
-        session.close()
         return path, file_json
 
     async def GetAllSettingsTests(self, request, context):

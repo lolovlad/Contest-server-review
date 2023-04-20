@@ -1,5 +1,5 @@
 from .protos import contest_pb2, contest_pb2_grpc
-from ..database import get_session
+from ..Repositories import AnswerRepository
 
 from sqlalchemy import func
 from ..tables import Answer
@@ -8,15 +8,17 @@ from json import dumps
 
 
 class ContestServices(contest_pb2_grpc.ContestApiServicer):
+
+    def __init__(self):
+        super().__init__()
+        self.__repository: AnswerRepository = AnswerRepository()
+
     async def GetReportTotal(self, request, context):
-        session = get_session()
-        ans = session.query(Answer).filter(Answer.id_contest == request.id_contest).first()
+        ans = await self.__repository.get_by_id_contest(request.id_contest)
         if ans.id_team == 0:
-            answers = session.query(Answer, func.max(Answer.points))\
-                .where(Answer.id_contest == request.id_contest).group_by(Answer.id_task, Answer.id_user).all()
+            answers = await self.__repository.get_max_points_group_user_by_id_contest(request.id_contest)
         else:
-            answers = session.query(Answer, func.max(Answer.points))\
-                .where(Answer.id_contest == request.id_contest).group_by(Answer.id_task, Answer.id_team).all()
+            answers = await self.__repository.get_max_points_group_team_by_id_contest(request.id_contest)
 
         result = {}
         for answer, points in answers:

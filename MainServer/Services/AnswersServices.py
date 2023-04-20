@@ -1,19 +1,26 @@
 from .protos import answer_pb2, answer_pb2_grpc
-from ..database import get_session
 from ..tables import TypeCompilation, Answer, Task
 
 from Classes.PathExtend import PathExtend
 from ..Models.TaskTestSettings import FileTaskTest
 
-from sqlalchemy.orm.session import Session
 from sqlalchemy import func
 from json import load, dumps
 from datetime import datetime
+
+from ..Repositories import *
 
 from Classes.CheckAnswer.CheckingAnswers import check_answer
 
 
 class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
+
+    def __init__(self):
+        super().__init__()
+        self.__repo_task: TaskRepository = TaskRepository()
+        self.__repo_answer: AnswerRepository = AnswerRepository()
+        self.__repo_type_compil: TypeCompilationRepository = TypeCompilationRepository()
+
     async def __find_json_file(self, path: PathExtend):
         for name in path.list_file_in_folder():
             if name.endswith("json"):
@@ -21,21 +28,18 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
         return ""
 
     async def __get_model_json(self, id_task: int):
-        session = get_session()
-        task = session.query(Task).filter(Task.id == id_task).first()
+        task = await self.__repo_task.get(id_task)
         path = PathExtend(task.path_files)
         filename = await self.__find_json_file(path)
         with open(filename.abs_path(), "r") as file:
             file_json = FileTaskTest(**load(file))
-        session.close()
         return path, file_json
 
     async def SendAnswer(self, request, context):
-        session = get_session()
 
         path_settings, file_json = await self.__get_model_json(request.id_task)
 
-        compiler = session.query(TypeCompilation).filter(TypeCompilation.id == request.id_compiler).first()
+        compiler = await self.__repo_type_compil.get(request.id_compiler)
 
         name_file = PathExtend.create_file_name(compiler.extension)
         string_path_file = f"Answers/{request.id_contest}_{request.id_user}/{name_file}"
@@ -52,24 +56,18 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
             path_programme_file=string_path_file
         )
 
-        session.add(answer)
-        session.commit()
+        answer = await self.__repo_answer.add(answer)
+
         async for response in check_answer(answer.id):
-            print(response, "programme")
             yield answer_pb2.SendAnswerCodeResponse(code="200")
-        session.close()
 
     async def GetListAnswersTask(self, request, context):
-        session = get_session()
         answers = []
         if request.type_contest == "team":
-            answers = session.query(Answer).\
-                filter(Answer.id_team == request.id).\
-                filter(Answer.id_task == request.id_task).all()
+            answers = await self.__repo_answer.get_list_by_id_task_and_team(request.id_task, request.id)
+
         elif request.type_contest == "solo":
-            answers = session.query(Answer).\
-                filter(Answer.id_user == request.id).\
-                filter(Answer.id_task == request.id_task).all()
+            answers = await self.__repo_answer.get_list_by_id_task_and_user(request.id_task, request.id)
 
         proto_answers = []
         for answer in answers:
@@ -92,17 +90,13 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
         return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers[::-1])
 
     async def GetAnswersContest(self, request, context):
-        session = get_session()
-        ans = session.query(Answer).\
-            filter(Answer.id_contest == request.id_contest).\
-            filter(Answer.id_user == request.id).first()
+        ans = await self.__repo_answer.get_by_id_contest(request.id_contest)
         if ans is not None:
             if ans.id_team == 0:
-                answers = session.query(Answer, func.max(Answer.points)) \
-                    .where(Answer.id_contest == request.id_contest).where(Answer.id_user == request.id).group_by(Answer.id_task).all()
+                answers = await self.__repo_answer.get_list_max_point_in_user(request.id_contest, request.id)
             else:
-                answers = session.query(Answer, func.max(Answer.points)) \
-                    .where(Answer.id_contest == request.id_contest).where(Answer.id_team == ans.id_team).group_by(Answer.id_task).all()
+                answers = await self.__repo_answer.get_list_max_point_in_team(request.id_contest, ans.id_team)
+
         else:
             answers = []
         proto_answers = []
@@ -122,12 +116,10 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
                 number_test=answer.number_test,
                 points=points,
             ))
-        session.close()
         return answer_pb2.GetAnswersContestResponse(answers=proto_answers)
 
     async def GetReportFile(self, request, context):
-        session = get_session()
-        answer = session.query(Answer).filter(Answer.id == request.id_answer).first()
+        answer = await self.__repo_answer.get(request.id_answer)
         file_report = answer.path_report_file
         with open(file_report, "r") as file:
             file_json = load(file)

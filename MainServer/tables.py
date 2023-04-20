@@ -5,6 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 from datetime import datetime
+
 base = declarative_base()
 
 
@@ -30,7 +31,8 @@ class Task(base):
 
     number_shipments = Column(Integer, nullable=False, default=100)
 
-    answers = relationship("Answer", backref="task", lazy=True, cascade="all, delete")
+    answers = relationship("Answer", backref="task", lazy="joined", cascade="all, delete")
+
 
 
 class Answer(base):
@@ -51,5 +53,7 @@ class Answer(base):
 
     path_report_file = Column(String, nullable=False, default="None")
     path_programme_file = Column(String, nullable=False)
+
+    is_completed = Column(Boolean, default=False)
 
     compilation = relationship('TypeCompilation', backref='type_compilation', lazy='joined')

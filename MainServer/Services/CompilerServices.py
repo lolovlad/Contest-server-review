@@ -1,14 +1,16 @@
 from .protos import compiler_pb2, compiler_pb2_grpc
-from ..database import get_session
 from ..tables import TypeCompilation
-
-from sqlalchemy.orm.session import Session
+from ..Repositories import TypeCompilationRepository
 
 
 class CompilerServices(compiler_pb2_grpc.CompilerApiServicer):
+
+    def __init__(self):
+        super().__init__()
+        self.__repository: TypeCompilationRepository = TypeCompilationRepository()
+
     async def GetListCompiler(self, request, context):
-        session = get_session()
-        compilers = session.query(TypeCompilation).all()
+        compilers = await self.__repository.get_list()
         proto_compilers = []
         for compiler in compilers:
             proto_compilers.append(compiler_pb2.Compiler(
@@ -16,14 +18,13 @@ class CompilerServices(compiler_pb2_grpc.CompilerApiServicer):
                 name=compiler.name_compilation,
                 extend="all"
             ))
-        session.close()
         return compiler_pb2.GetListCompilerResponse(
             compilers=proto_compilers
         )
 
     async def GetCompiler(self, request, context):
-        with self.__session() as session:
-            compiler = session.query(TypeCompilation).filter(TypeCompilation.id == request.id).first()
+
+        compiler = self.__repository.get()
         return compiler_pb2.Compiler(
             id=compiler.id,
             name=compiler.name_compilation,
