@@ -20,6 +20,7 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
         self.__repo_task: TaskRepository = TaskRepository()
         self.__repo_answer: AnswerRepository = AnswerRepository()
         self.__repo_type_compil: TypeCompilationRepository = TypeCompilationRepository()
+        self.__repo_contest_report: ContestReportRepository = ContestReportRepository()
 
     async def __find_json_file(self, path: PathExtend):
         for name in path.list_file_in_folder():
@@ -86,21 +87,20 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
                 number_test=answer.number_test,
                 points=answer.points,
             ))
-        session.close()
         return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers[::-1])
 
     async def GetAnswersContest(self, request, context):
         ans = await self.__repo_answer.get_by_id_contest(request.id_contest)
         if ans is not None:
             if ans.id_team == 0:
-                answers = await self.__repo_answer.get_list_max_point_in_user(request.id_contest, request.id)
+                answers = await self.__repo_contest_report.get_max_points_by_contest_and_user(request.id_contest, request.id)
             else:
-                answers = await self.__repo_answer.get_list_max_point_in_team(request.id_contest, ans.id_team)
+                answers = await self.__repo_contest_report.get_max_points_by_contest_and_team(request.id_contest, ans.id_team)
 
         else:
             answers = []
         proto_answers = []
-        for answer, points in answers:
+        for answer in answers:
             date: datetime = answer.date_send
             proto_answers.append(answer_pb2.Answer(
                 date_send=date.isoformat(),
@@ -114,7 +114,7 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
                 time=answer.time,
                 memory_size=str(answer.memory_size),
                 number_test=answer.number_test,
-                points=points,
+                points=answer.points,
             ))
         return answer_pb2.GetAnswersContestResponse(answers=proto_answers)
 

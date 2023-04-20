@@ -6,7 +6,7 @@ from typing import List, Set
 
 
 from MainServer.Models.TaskTestSettings import FileTaskTest, CheckType, TypeTest, ChunkTest
-from MainServer.tables import Answer, Task, TypeCompilation
+from MainServer.tables import Answer, ContestReport
 
 from .InputData import InputData
 from .StartFileProgram import StartFileProgram
@@ -21,7 +21,7 @@ from .Models.ReportTesting import Rating
 from ..PathExtend import PathExtend
 
 from .Models.Settings import Settings
-from MainServer.Repositories import AnswerRepository, TaskRepository
+from MainServer.Repositories import AnswerRepository, TaskRepository, ContestReportRepository
 
 class CheckingAnswer:
     def __init__(self, file_settings_task: FileTaskTest, settings: Settings):
@@ -243,4 +243,24 @@ async def check_answer(answer_id: int):
     answer.time = f"{int(sum(times) / len(times))} ms"
     answer.is_completed = True
     await repo.update(answer)
+    await add_max_result(answer)
     yield False
+
+
+async def add_max_result(answer: Answer):
+    repo_contest = ContestReportRepository()
+
+    get_cur = await repo_contest.get_by_contest_and_task(answer.id_contest, answer.id_task)
+
+    if get_cur is not None:
+        if answer.points > get_cur.answer.points:
+            get_cur.answer = answer
+            await repo_contest.update(get_cur)
+    else:
+        await repo_contest.add(ContestReport(
+            id_contest=answer.id_contest,
+            id_task=answer.id_task,
+            id_user=answer.id_user,
+            id_team=answer.id_team,
+            id_answer=answer.id
+        ))

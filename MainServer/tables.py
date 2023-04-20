@@ -34,7 +34,6 @@ class Task(base):
     answers = relationship("Answer", backref="task", lazy="joined", cascade="all, delete")
 
 
-
 class Answer(base):
     __tablename__ = "answer"
 
@@ -57,3 +56,15 @@ class Answer(base):
     is_completed = Column(Boolean, default=False)
 
     compilation = relationship('TypeCompilation', backref='type_compilation', lazy='joined')
+
+
+class ContestReport(base):
+    __tablename__ = "contest_report"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    id_contest = Column(Integer, nullable=False)
+    id_task = Column(Integer, nullable=False, default=0)
+    id_user = Column(Integer, nullable=False)
+    id_team = Column(Integer, nullable=False)
+    id_answer = Column(Integer, ForeignKey('answer.id'))
+    answer = relationship('Answer', backref='answer', lazy='joined')
+

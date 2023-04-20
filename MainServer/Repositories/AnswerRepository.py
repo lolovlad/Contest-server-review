@@ -18,20 +18,6 @@ class AnswerRepository:
             result = await session.execute(request)
             return result.scalars().first()
 
-    async def get_max_points_group_team_by_id_contest(self, id_contest: int) -> list:
-        async with get_session() as session:
-            request = session.query(Answer, func.max(Answer.points))\
-                .where(Answer.id_contest == id_contest).group_by(Answer.id_task, Answer.id_team).all()
-            result = await session.execute(request)
-            return result.scalars().all()
-
-    async def get_max_points_group_user_by_id_contest(self, id_contest: int) -> list:
-        async with get_session() as session:
-            request = select(Answer, func.max(Answer.points))\
-                .where(Answer.id_contest == id_contest).group_by(Answer.id_task, Answer.id_user).all()
-            result = await session.execute(request)
-            return result.scalars().all()
-
     async def add(self, answer: Answer) -> Answer | None:
         async with get_session() as session:
             try:
@@ -68,25 +54,6 @@ class AnswerRepository:
             result = await session.execute(request)
             return result.scalars().first()
 
-    async def get_list_max_point_in_team(self, id_contest: int, id_team: int) -> list:
-        async with get_session() as session:
-            request = select(Answer, func.max(Answer.points)).\
-                where(Answer.id_team == id_team). \
-                where(Answer.id_contest == id_contest).\
-                group_by(Answer.id_task)
-
-            result = await session.execute(request)
-            return result.scalars().all()
-
-    async def get_list_max_point_in_user(self, id_contest: int, id_user: int) -> list:
-        async with get_session() as session:
-            request = select(Answer, func.max(Answer.points)).\
-                where(Answer.id_user == id_user). \
-                where(Answer.id_contest == id_contest).\
-                group_by(Answer.id_task)
-
-            result = await session.execute(request)
-            return result.scalars().all()
 
     async def update(self, answer: Answer):
         async with get_session() as session:
