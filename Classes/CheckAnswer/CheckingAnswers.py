@@ -21,9 +21,7 @@ from .Models.ReportTesting import Rating
 from ..PathExtend import PathExtend
 
 from .Models.Settings import Settings
-
 from MainServer.Repositories import AnswerRepository, TaskRepository
-
 
 class CheckingAnswer:
     def __init__(self, file_settings_task: FileTaskTest, settings: Settings):
@@ -155,7 +153,7 @@ class CheckingAnswer:
             self.__test_report[0].list_test_report.append("PCF")
             self.__test_report[0].time.append(0)
             self.__test_report[0].memory.append(0)
-            self.__test_report[0].state_test = "error"
+            self.__test_report[0].state_test="error"
             return False
 
     def destruction(self):

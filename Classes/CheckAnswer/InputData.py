@@ -1,6 +1,7 @@
 from ..CheckAnswer.InputStream import InputStream
 from ..CheckAnswer.InputFileStream import InputFileStream
 from ..PathExtend import PathExtend
+from .Models.Settings import TypeInput
 
 
 class InputData:
@@ -10,9 +11,9 @@ class InputData:
         self.__input_stream = None
 
     def creating_input_data(self, type_data):
-        if type_data == 1:
+        if type_data == TypeInput.STREAM:
             self.__input_stream = self.__input_data
-        elif type_data == 2:
+        elif type_data == TypeInput.FILE:
             self.__input_stream = self.__file_data
 
     def start_stream(self, input_data: PathExtend):

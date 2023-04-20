@@ -86,7 +86,8 @@ class AnswersServices(answer_pb2_grpc.AnswerApiServicer):
                 number_test=answer.number_test,
                 points=answer.points,
             ))
-        return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers)
+        session.close()
+        return answer_pb2.GetListAnswersTaskResponse(answers=proto_answers[::-1])
 
     async def GetAnswersContest(self, request, context):
         ans = await self.__repo_answer.get_by_id_contest(request.id_contest)

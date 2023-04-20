@@ -1,5 +1,6 @@
 from ..CheckAnswer.OutputStream import OutputStream
 from ..CheckAnswer.OutputFileStream import OutputFileStream
+from .Models.Settings import TypeOutput
 
 
 class OutputData:
@@ -9,9 +10,9 @@ class OutputData:
         self.__output_stream = None
 
     def creating_output_data(self, type_data):
-        if type_data == 1:
+        if type_data == TypeOutput.STREAM:
             self.__output_stream = self.__input_data
-        elif type_data == 2:
+        elif type_data == TypeOutput.FILE:
             self.__output_stream = self.__file_data
 
     def read_output(self, input_data):

@@ -20,4 +20,4 @@ class ReportTesting(BaseModel):
     out: str = None
     errors: Rating = Rating.WRONG_ANSWER
     time: int = 0
-    memory: List[float] = [0.0]
+    memory: float = 0.0

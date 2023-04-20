@@ -20,3 +20,4 @@ class Settings(BaseModel):
     path_compiler: str = ""
     path_file_test: str = ""
     path_file_answer: str = ""
+

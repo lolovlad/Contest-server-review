@@ -1,1 +1,1 @@
-/usr/bin/time -f '%M' python3 {path_file}
+/usr/bin/time -f '%M %e' python3 {path_file}

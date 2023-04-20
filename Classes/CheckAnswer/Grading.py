@@ -5,7 +5,7 @@ class Grading:
     def __init__(self, size_memory):
         self.__size_memory = size_memory
 
-    def grading(self, correct_answer, code_error, time, size_memory):
+    def grading(self, correct_answer, code_error, size_memory):
         if code_error == Rating.COMPILATION_ERROR:
             return Rating.COMPILATION_ERROR
 
@@ -30,7 +30,7 @@ class Grading:
         elif code_error == Rating.IDLENESS_LIMIT_EXCEEDED:
             return Rating.IDLENESS_LIMIT_EXCEEDED
 
-        elif size_memory[0] > self.__size_memory:
+        elif size_memory >= self.__size_memory:
             return Rating.MEMORY_LIMIT_EXCEEDED
 
         elif correct_answer:
