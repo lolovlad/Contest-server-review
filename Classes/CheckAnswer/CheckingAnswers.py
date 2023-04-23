@@ -249,8 +249,10 @@ async def check_answer(answer_id: int):
 
 async def add_max_result(answer: Answer):
     repo_contest = ContestReportRepository()
-
-    get_cur = await repo_contest.get_by_contest_and_task(answer.id_contest, answer.id_task)
+    if answer.id_team == 0:
+        get_cur = await repo_contest.get_by_contest_task_user(answer.id_contest, answer.id_task, answer.id_user)
+    else:
+        get_cur = await repo_contest.get_by_contest_task_team(answer.id_contest, answer.id_task, answer.id_team)
 
     if get_cur is not None:
         if answer.points > get_cur.answer.points:

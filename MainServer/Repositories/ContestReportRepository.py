@@ -24,11 +24,21 @@ class ContestReportRepository:
             except:
                 await session.rollback()
 
-    async def get_by_contest_and_task(self, id_contest: int, id_task: int) -> ContestReport | None:
+    async def get_by_contest_task_user(self, id_contest: int, id_task: int, id_user: int) -> ContestReport | None:
         async with get_session() as session:
             request = select(ContestReport). \
                 where(ContestReport.id_contest == id_contest). \
-                where(ContestReport.id_task == id_task)
+                where(ContestReport.id_task == id_task).\
+                where(ContestReport.id_user == id_user)
+            result = await session.execute(request)
+            return result.scalars().first()
+
+    async def get_by_contest_task_team(self, id_contest: int, id_task: int, id_team: int) -> ContestReport | None:
+        async with get_session() as session:
+            request = select(ContestReport). \
+                where(ContestReport.id_contest == id_contest). \
+                where(ContestReport.id_task == id_task). \
+                where(ContestReport.id_team == id_team)
             result = await session.execute(request)
             return result.scalars().first()
 
