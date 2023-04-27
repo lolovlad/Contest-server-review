@@ -82,7 +82,7 @@ class CheckingAnswer:
                     )
 
                     correct_answer = self.__read_answer(info_test.answer)
-
+                    print(information.out, correct_answer)
                     grading = self.__grading.grading(information.out == correct_answer, information.errors, information.memory)
 
                     self.__test_report[id_chunk_test].list_test_report.append(self.__GRADING[grading.value - 1])
@@ -256,7 +256,7 @@ async def add_max_result(answer: Answer):
 
     if get_cur is not None:
         if answer.points > get_cur.answer.points:
-            get_cur.answer = answer
+            get_cur.id_answer = answer.id
             await repo_contest.update(get_cur)
     else:
         await repo_contest.add(ContestReport(
