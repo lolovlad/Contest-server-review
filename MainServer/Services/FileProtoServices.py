@@ -29,7 +29,7 @@ class FileProtoService(file_pb2_grpc.FileApiServicer):
 
     async def DeleteFile(self, request, context):
         file_name = f"{request.name}.{request.extend}"
-        task = await self.__repository.get(request.metadata.id_task)
+        task = await self.__repository.get(request.id_task)
         filepath = PathExtend(task.path_files, file_name)
         filepath.delete_file()
         return file_pb2.StringResponse(code="200")
