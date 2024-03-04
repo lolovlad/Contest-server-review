@@ -1,4 +1,4 @@
-version: '3'
+version: '3.7'
 services:
   microservice-answer:
     container_name: "microservice-answer"
@@ -9,4 +9,27 @@ services:
       context: .
       dockerfile: DockerFile
     ports:
-      - "50001:50001"
+      - 7000:7000
+    command: ["/app/docker/app.sh"]
+    depends_on:
+      - db
+    networks:
+      - default
+  db:
+    image: postgres:latest
+    container_name: db_app
+    restart: always
+    expose:
+      - 5400
+    ports:
+      - 5400:5400
+    env_file:
+      - settings_server.env
+    networks:
+      - default
+
+networks:
+  default:
+    external: true
+    name: agu-review
+

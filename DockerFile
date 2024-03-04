@@ -1,7 +1,9 @@
-FROM python:3.10
-RUN apt-get update -qy
+FROM python:3.11
+RUN mkdir /app
+WORKDIR /app
+COPY requirements.txt .
+COPY run_server.py .
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
-WORKDIR .
-RUN pip install -r requirements.txt
-EXPOSE 50001
-CMD ["python3", "run_server.py"]
+EXPOSE 7000
+RUN chmod a+x docker/*.sh

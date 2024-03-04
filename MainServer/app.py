@@ -31,6 +31,7 @@ async def serve():
     contest_pb2_grpc.add_ContestApiServicer_to_server(ContestServices(), server)
 
     server.add_insecure_port(f'{settings.server_host}:{settings.server_port}')
+    print("start_server")
     await server.start()
 
     async def server_graceful_shutdown():
