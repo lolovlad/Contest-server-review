@@ -27,7 +27,7 @@ class Test(BaseModel):
 
 
 class ChunkTest(BaseModel):
-    type_test: TypeTest
+    type_test: TypeTest = None
     settings_test: SettingsTest
     tests: List[Test]
 

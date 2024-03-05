@@ -23,6 +23,7 @@ from ..PathExtend import PathExtend
 from .Models.Settings import Settings
 from MainServer.Repositories import AnswerRepository, TaskRepository, ContestReportRepository
 
+
 class CheckingAnswer:
     def __init__(self, file_settings_task: FileTaskTest, settings: Settings):
         super().__init__()

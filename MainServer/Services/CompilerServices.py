@@ -1,31 +1,29 @@
-from .protos import compiler_pb2, compiler_pb2_grpc
+from fastapi import Depends
 from ..tables import TypeCompilation
+from ..Models import GetCompiler
 from ..Repositories import TypeCompilationRepository
 
 
-class CompilerServices(compiler_pb2_grpc.CompilerApiServicer):
+class CompilerServices:
 
-    def __init__(self):
-        super().__init__()
-        self.__repository: TypeCompilationRepository = TypeCompilationRepository()
+    def __init__(self, repo_type_compilation: TypeCompilationRepository = Depends()):
+        self.__repository: TypeCompilationRepository = repo_type_compilation
 
-    async def GetListCompiler(self, request, context):
+    async def get_list_compiler(self) -> list[GetCompiler]:
         compilers = await self.__repository.get_list()
         proto_compilers = []
         for compiler in compilers:
-            proto_compilers.append(compiler_pb2.Compiler(
+            proto_compilers.append(GetCompiler(
                 id=compiler.id,
                 name=compiler.name_compilation,
                 extend="all"
             ))
-        return compiler_pb2.GetListCompilerResponse(
-            compilers=proto_compilers
-        )
+        return proto_compilers
 
-    async def GetCompiler(self, request, context):
+    async def get_compiler(self, id_compilation: int) -> GetCompiler:
 
-        compiler = self.__repository.get()
-        return compiler_pb2.Compiler(
+        compiler = await self.__repository.get(id_compilation)
+        return GetCompiler(
             id=compiler.id,
             name=compiler.name_compilation,
             extend="all"

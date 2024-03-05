@@ -6,16 +6,20 @@ from sqlalchemy import create_engine
 from .settings import settings
 
 
-DATABASE_URL = f"postgresql+asyncpg://{settings.database_name.strip()}"
+DATABASE_URL = f"postgresql+asyncpg://{settings.postgres_user}:{settings.postgres_password}@{settings.postgres_host}:" \
+               f"{settings.postgres_port}/{settings.postgres_db}"
 
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 Base = declarative_base()
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_session = sessionmaker(engine,
+                             class_=AsyncSession,
+                             expire_on_commit=False)
 
 
-def get_session() -> AsyncSession:
-    return async_session()
-
-
-engine_alembic = create_engine(f"postgresql+psycopg2://{settings.database_name.strip()}", echo=False)
+async def get_session() -> AsyncSession:
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()

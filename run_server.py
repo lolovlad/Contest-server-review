@@ -1,14 +1,8 @@
-from MainServer.app import serve, cleanup_coroutines
-import asyncio
+import uvicorn
+from MainServer.settings import settings
+from MainServer.app import app
 
-
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(serve())
-finally:
-    try:
-        loop.run_until_complete(*cleanup_coroutines)
-        loop.close()
-    except TypeError:
-        loop.close()
-asyncio.run(serve())
+if __name__ == "__main__":
+    uvicorn.run(app,
+                host=settings.server_host,
+                port=settings.server_port)

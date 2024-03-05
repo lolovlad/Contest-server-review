@@ -1,22 +1,19 @@
-from .protos import contest_pb2, contest_pb2_grpc
+from fastapi import Depends
+
 from ..Repositories import AnswerRepository, ContestReportRepository
-
-from sqlalchemy import func
-from ..tables import Answer
-
 from json import dumps
 
 
-class ContestServices(contest_pb2_grpc.ContestApiServicer):
+class ContestServices:
+    def __init__(self,
+                 repo_answer: AnswerRepository = Depends(),
+                 repo_contest: ContestReportRepository = Depends()):
+        self.__repository: AnswerRepository = repo_answer
+        self.__repo_contest: ContestReportRepository = repo_contest
 
-    def __init__(self):
-        super().__init__()
-        self.__repository: AnswerRepository = AnswerRepository()
-        self.__repo_contest: ContestReportRepository = ContestReportRepository()
-
-    async def GetReportTotal(self, request, context):
-        ans = await self.__repository.get_by_id_contest(request.id_contest)
-        answers = await self.__repo_contest.get_max_points_by_contest(request.id_contest)
+    async def get_report_total(self, id_contest: int) -> str:
+        ans = await self.__repository.get_by_id_contest(id_contest)
+        answers = await self.__repo_contest.get_max_points_by_contest(id_contest)
 
         result = {}
         for answer in answers:
@@ -31,4 +28,4 @@ class ContestServices(contest_pb2_grpc.ContestApiServicer):
             else:
                 result[answer.id_user]["total"][answer.id_task] = answer.points
                 result[answer.id_user]["sum_point"] += answer.points
-        return contest_pb2.GetReportTotalResponse(result=dumps(result).encode())
+        return dumps(result)

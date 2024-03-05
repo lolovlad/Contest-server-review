@@ -1,6 +1,7 @@
-from ..tables import Answer, TypeCompilation
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from ..tables import Answer
 from sqlalchemy import select
-from sqlalchemy import func
 from ..database import get_session
 
 from typing import List
@@ -8,58 +9,53 @@ from typing import List
 
 class AnswerRepository:
 
+    def __init__(self, session: AsyncSession = Depends(get_session)):
+        self.__session: AsyncSession = session
+
     async def get(self, id_answer: int) -> Answer | None:
-        async with get_session() as session:
-            return await session.get(Answer, id_answer)
+        return await self.__session.get(Answer, id_answer)
 
     async def get_by_id_contest(self, id_contest: int) -> Answer | None:
-        async with get_session() as session:
-            request = select(Answer).where(Answer.id_contest == id_contest)
-            result = await session.execute(request)
-            return result.scalars().first()
+        request = select(Answer).where(Answer.id_contest == id_contest)
+        result = await self.__session.execute(request)
+        return result.scalars().first()
 
     async def add(self, answer: Answer) -> Answer | None:
-        async with get_session() as session:
-            try:
-                session.add(answer)
-                await session.commit()
-                return answer
-            except:
-                await session.rollback()
+        try:
+            self.__session.add(answer)
+            await self.__session.commit()
+            return answer
+        except:
+            await self.__session.rollback()
 
     async def get_list_by_id_task_and_team(self, id_task: int, id_team: int) -> List[Answer]:
-        async with get_session() as session:
-            request = select(Answer).\
-                where(Answer.id_team == id_team).\
-                where(Answer.id_task == id_task)
+        request = select(Answer).\
+            where(Answer.id_team == id_team).\
+            where(Answer.id_task == id_task)
 
-            result = await session.execute(request)
-            return result.scalars().all()
+        result = await self.__session.execute(request)
+        return result.scalars().all()
 
     async def get_list_by_id_task_and_user(self, id_task: int, id_user: int) -> List[Answer]:
-        async with get_session() as session:
-            request = select(Answer). \
-                where(Answer.id_user == id_user). \
-                where(Answer.id_task == id_task)
+        request = select(Answer). \
+            where(Answer.id_user == id_user). \
+            where(Answer.id_task == id_task)
 
-            result = await session.execute(request)
-            return result.scalars().all()
+        result = await self.__session.execute(request)
+        return result.scalars().all()
 
     async def get_by_contest_and_user_id(self, id_contest: int, id_user: int) -> Answer:
-        async with get_session() as session:
-            request = select(Answer). \
-                where(Answer.id_user == id_user). \
-                where(Answer.id_contest == id_contest)
+        request = select(Answer). \
+            where(Answer.id_user == id_user). \
+            where(Answer.id_contest == id_contest)
 
-            result = await session.execute(request)
-            return result.scalars().first()
-
+        result = await self.__session.execute(request)
+        return result.scalars().first()
 
     async def update(self, answer: Answer):
-        async with get_session() as session:
-            try:
-                session.add(answer)
-                await session.commit()
-            except:
-                await session.rollback()
+        try:
+            self.__session.add(answer)
+            await self.__session.commit()
+        except:
+            await self.__session.rollback()
 
