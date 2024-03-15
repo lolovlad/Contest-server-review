@@ -7,13 +7,13 @@ from ..Models import PostTask, Settings, UpdateTask
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 
-@router.post("/", responses={
+@router.post("/{id_task}", responses={
     status.HTTP_201_CREATED: {"message": "create"}
 })
-async def create_settings(id: int,
+async def create_settings(id_task: int,
                           task: PostTask,
                           service: SettingsProtoServices = Depends()):
-    await service.settings_post(id, task)
+    await service.settings_post(id_task, task)
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content={"message": "create"}

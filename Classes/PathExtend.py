@@ -4,6 +4,7 @@ import shutil
 from string import ascii_letters, digits
 from MainServer.settings import settings
 import os
+from aiofiles import open as async_open
 
 
 class PathExtend:
