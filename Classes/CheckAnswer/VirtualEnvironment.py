@@ -1,6 +1,6 @@
 from ..PathExtend import PathExtend
 from pathlib import Path
-from os import environ, getcwd, chdir
+from os import environ, getcwd, chdir, name
 
 
 class VirtualEnvironment:
@@ -36,4 +36,8 @@ class VirtualEnvironment:
         file = path_file.name_file()
         path_file_program = PathExtend(self.__path_virtual_environment.abs_path(), file)
         path_file.move_file(path_file_program)
-        self.__path_file_answer = path_file_program
+        if name == "nt":
+            cur_work = Path(self.__work_folder)
+            self.__path_file_answer = Path(file)
+        else:
+            self.__path_file_answer = path_file_program

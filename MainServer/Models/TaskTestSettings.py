@@ -34,3 +34,14 @@ class ChunkTest(BaseModel):
 
 class FileTaskTest(BaseModel):
     setting_tests: List[ChunkTest]
+
+
+class SettingsTestStr(BaseModel):
+    limitation_variable: str
+    necessary_test: str
+    check_type: CheckType
+
+
+class ChunkTestReturn(BaseModel):
+    settings_test: SettingsTestStr
+    tests: list[Test]

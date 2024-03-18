@@ -1,6 +1,6 @@
 from fastapi import Depends
 from Classes.PathExtend import PathExtend
-from ..Models import SettingsTest, Test, ChunkTest
+from ..Models import SettingsTest, Test, ChunkTest, SettingsTestStr, ChunkTestReturn
 
 from ..Repositories import TaskRepository
 from ..tables import Task
@@ -27,12 +27,12 @@ class TaskFileSettingsTestService:
             file_json = FileTaskTest(**load(file))
         return path, file_json
 
-    async def get_all_settings_tests(self, id: int) -> list[SettingsTest]:
+    async def get_all_settings_tests(self, id: int) -> list[SettingsTestStr]:
         _, file_json = await self.__get_model_json(id)
 
         response = []
         for chunk in file_json.setting_tests:
-            response.append(SettingsTest(
+            response.append(SettingsTestStr(
                 limitation_variable=" ".join(chunk.settings_test.limitation_variable),
                 necessary_test=" ".join(map(str, chunk.settings_test.necessary_test)),
                 check_type=chunk.settings_test.check_type,
@@ -40,13 +40,13 @@ class TaskFileSettingsTestService:
 
         return response
 
-    async def get_chunk_test(self, id: int, type_test: int, index: int) -> ChunkTest:
+    async def get_chunk_test(self, id: int, type_test: str, index: int) -> ChunkTestReturn:
         path, file_json = await self.__get_model_json(id)
 
         list_type_chunk = list(filter(lambda x: x.type_test == type_test, file_json.setting_tests))
         chunk = list_type_chunk[index]
 
-        settings_test = SettingsTest(
+        settings_test = SettingsTestStr(
             limitation_variable=" ".join(chunk.settings_test.limitation_variable),
             necessary_test=" ".join(map(str, chunk.settings_test.necessary_test)),
             check_type=chunk.settings_test.check_type,
@@ -61,8 +61,8 @@ class TaskFileSettingsTestService:
                 answer=open(PathExtend(path.abs_path(), test.answer).abs_path(), "rb").read()
             ))
 
-        proto_chunk = ChunkTest(
-            setting_tests=settings_test,
+        proto_chunk = ChunkTestReturn(
+            settings_test=settings_test,
             tests=list_test
         )
         return proto_chunk

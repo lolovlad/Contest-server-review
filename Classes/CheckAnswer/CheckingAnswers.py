@@ -6,7 +6,7 @@ from typing import List, Set
 
 
 from MainServer.Models.TaskTestSettings import FileTaskTest, CheckType, TypeTest, ChunkTest
-from MainServer.tables import Answer, ContestReport
+from MainServer.tables import Answer, ContestReport, Task
 
 from .InputData import InputData
 from .StartFileProgram import StartFileProgram
@@ -21,7 +21,15 @@ from .Models.ReportTesting import Rating
 from ..PathExtend import PathExtend
 
 from .Models.Settings import Settings
-from MainServer.Repositories import AnswerRepository, TaskRepository, ContestReportRepository
+
+from MainServer.database import async_session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from MainServer.Repositories import ContestReportRepository
+
+import os
+from pathlib import Path
 
 
 class CheckingAnswer:
@@ -76,14 +84,21 @@ class CheckingAnswer:
 
             if start_testing:
                 self.__test_report[id_chunk_test].state_report = True
+                os_name = "win"
                 for id_info_test, info_test in enumerate(chunk.tests):
-                    information = await self.__run_file_program.start_process(
-                        PathExtend(self.__path.abs_path(), info_test.filling_type_variable),
-                        self.__settings.timeout
-                    )
+                    if os_name == "win":
+                        information = await self.__run_file_program.start_process(
+                            PathExtend(self.__path.abs_path(), info_test.filling_type_variable),
+                            self.__settings.timeout
+                        )
+                    else:
+                        information = await self.__run_file_program.start_process(
+                            PathExtend(self.__path.abs_path(), info_test.filling_type_variable),
+                            self.__settings.timeout
+                        )
 
                     correct_answer = self.__read_answer(info_test.answer)
-                    print(information.out, correct_answer)
+                    #print(information.out, correct_answer, "testing")
                     grading = self.__grading.grading(information.out == correct_answer, information.errors, information.memory)
 
                     self.__test_report[id_chunk_test].list_test_report.append(self.__GRADING[grading.value - 1])
@@ -179,14 +194,8 @@ def get_model_json(path: PathExtend):
     return path, file_json
 
 
-async def check_answer(answer_id: int):
-    repo = AnswerRepository()
-    answer = await repo.get(answer_id)
-    task = await TaskRepository().get(answer.id_task)
-
+async def check_answer(answer: Answer, task: Task):
     path_file_test = task.path_files
-
-    yield True
 
     dir_path_file = PathExtend(answer.path_programme_file).path_file()
     path, test = get_model_json(PathExtend(path_file_test))
@@ -203,7 +212,6 @@ async def check_answer(answer_id: int):
     checking_answer = CheckingAnswer(file_settings_task=test,
                                      settings=settings)
 
-    yield True
     is_create = await checking_answer.create()
     if is_create:
         await checking_answer.testing_programme()
@@ -224,8 +232,6 @@ async def check_answer(answer_id: int):
     memory = []
     answers = []
 
-    yield True
-
     for i in answer_json:
         points += i.point_sum
         answers += i.list_test_report
@@ -243,27 +249,47 @@ async def check_answer(answer_id: int):
     answer.number_test = answer_json[-1].number_test
     answer.time = f"{int(sum(times) / len(times))} ms"
     answer.is_completed = True
-    await repo.update(answer)
+    await safe_answer(answer)
     await add_max_result(answer)
-    yield False
+    return answer
+
+
+async def safe_answer(answer: Answer):
+    async with async_session() as session:
+        try:
+            session.add(answer)
+            await session.commit()
+        except:
+            await session.rollback()
 
 
 async def add_max_result(answer: Answer):
-    repo_contest = ContestReportRepository()
-    if answer.id_team == 0:
-        get_cur = await repo_contest.get_by_contest_task_user(answer.id_contest, answer.id_task, answer.id_user)
-    else:
-        get_cur = await repo_contest.get_by_contest_task_team(answer.id_contest, answer.id_task, answer.id_team)
+    async with async_session() as session:
+        request = select(ContestReport). \
+            where(ContestReport.id_task == answer.id_task). \
+            where(ContestReport.id_user == answer.id_user).\
+            where(ContestReport.id_contest == answer.id_contest)
+        result = await session.execute(request)
+        get_cur = result.scalars().first()
 
-    if get_cur is not None:
-        if answer.points > get_cur.answer.points:
-            get_cur.id_answer = answer.id
-            await repo_contest.update(get_cur)
-    else:
-        await repo_contest.add(ContestReport(
-            id_contest=answer.id_contest,
-            id_task=answer.id_task,
-            id_user=answer.id_user,
-            id_team=answer.id_team,
-            id_answer=answer.id
-        ))
+        if get_cur is not None:
+            if answer.points > get_cur.answer.points:
+                get_cur.id_answer = answer.id
+                try:
+                    session.add(get_cur)
+                    await session.commit()
+                except:
+                    await session.rollback()
+        else:
+            get_cur = ContestReport(
+                id_contest=answer.id_contest,
+                id_task=answer.id_task,
+                id_user=answer.id_user,
+                id_team=0,
+                id_answer=answer.id
+            )
+            try:
+                session.add(get_cur)
+                await session.commit()
+            except:
+                await session.rollback()

@@ -6,3 +6,8 @@ class GetCompiler(BaseModel):
     name: str
     extend: str
 
+
+class GetNewCompilation(BaseModel):
+    id: int
+    name_compilation: str
+    extension: str

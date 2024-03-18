@@ -31,7 +31,7 @@ class ContestReportRepository:
             where(ContestReport.id_task == id_task).\
             where(ContestReport.id_user == id_user)
         result = await self.__session.execute(request)
-        return result.scalars().first()
+        return result.scalars().one_or_none()
 
     async def get_by_contest_task_team(self, id_contest: int, id_task: int, id_team: int) -> ContestReport | None:
         request = select(ContestReport). \

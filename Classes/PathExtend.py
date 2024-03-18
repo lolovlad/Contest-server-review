@@ -12,6 +12,10 @@ class PathExtend:
         dir_path = Path(Path(__file__).parent).parent
         self.__path: Path = Path(dir_path, settings.static_path, *args)
 
+    @property
+    def path(self):
+        return self.__path
+
     def __str__(self):
         return str(self.__path)
 
@@ -85,3 +89,7 @@ class PathExtend:
             else:
                 if filename.endswith(extend):
                     os.remove(Path(self.__path, str(filename)))
+
+    def read_file(self) -> str:
+        with open(self.__path, "r") as file:
+            return file.read()
