@@ -1,1 +1,1 @@
-wsl.exe /usr/bin/time -f '%M %U' python3 {path_file}
+/usr/bin/time -f '%M %U' python3 {path_file}
