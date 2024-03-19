@@ -4,8 +4,6 @@ RUN apt install time
 RUN mkdir /app
 WORKDIR /app
 COPY requirements.txt .
-COPY run_server.py .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 COPY . .
-EXPOSE 7000
 RUN chmod a+x docker/*.sh
