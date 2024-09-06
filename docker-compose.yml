@@ -1,20 +1,20 @@
 version: '3.7'
 services:
-  microservice-answer:
-    container_name: "microservice-answer"
-    image: microservice-answer
-    env_file:
-      - settings_server.env
-    build:
-      context: .
-      dockerfile: DockerFile
-    ports:
-      - 7000:7000
-    command: ["/app/docker/app.sh"]
-    depends_on:
-      - db
-    networks:
-      - default
+  #microservice-answer:
+  #  container_name: "microservice-answer"
+  #  image: microservice-answer
+  #  env_file:
+  #    - settings_server.env
+  #  build:
+  #    context: .
+  #    dockerfile: DockerFile
+  #  ports:
+  #    - 7000:7000
+  #  command: ["/app/docker/app.sh"]
+  #  depends_on:
+  #    - db
+  #  networks:
+  #    - default
   db:
     image: postgres:latest
     container_name: db_app
@@ -24,9 +24,54 @@ services:
     ports:
       - 5400:5400
     env_file:
-      - settings_server.env
+      - settings_server_debug.env
     networks:
       - default
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./data/postgres/pgdata:/var/lib/postgresql/data/pgdata
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+    ports:
+      - "6380:6379"
+    command: >
+      sh -c '
+        mkdir -p /usr/local/etc/redis &&
+        echo "bind 0.0.0.0" > /usr/local/etc/redis/redis.conf &&
+        echo "requirepass $REDIS_PASSWORD" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendonly yes" >> /usr/local/etc/redis/redis.conf &&
+        echo "appendfsync everysec" >> /usr/local/etc/redis/redis.conf &&
+        echo "user default on nopass ~* +@all" > /usr/local/etc/redis/users.acl &&
+        echo "user $REDIS_USER on >$REDIS_USER_PASSWORD ~* +@all" >> /usr/local/etc/redis/users.acl &&
+        redis-server /usr/local/etc/redis/redis.conf --aclfile /usr/local/etc/redis/users.acl
+      '
+    volumes:
+      - ./data/redisdata:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
+
+  minio:
+    container_name: minio-container
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      -  ./data/minio:/data
+    env_file:
+      - settings_server_debug.env
+    command: server --console-address ":9001" /data
+
 
 networks:
   default:

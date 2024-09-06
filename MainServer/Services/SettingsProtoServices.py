@@ -5,24 +5,25 @@ from ..Models import PostTask, Settings, UpdateTask
 from ..database import get_session
 from ..tables import Task
 from ..Repositories import TaskRepository
+from ..Repositories.FileBucketRepository import FileBucketRepository
+from ..settings import settings as settings_env
 
 
 class SettingsProtoServices:
 
-    def __init__(self, repo_task: TaskRepository = Depends()):
+    def __init__(self,
+                 repo_task: TaskRepository = Depends(),
+                 repo_file: FileBucketRepository = Depends()):
         self.__repository: TaskRepository = repo_task
+        self.__file_repo: FileBucketRepository = repo_file
 
     async def settings_post(self, id: int, task: PostTask):
-        name_folder = PathExtend.create_folder_name(10)
-        folder = PathExtend(name_folder)
-        folder.create_folder()
-
         task = Task(id=id,
                     time_work=task.time_work,
                     size_raw=task.size_raw,
                     type_input=task.type_input,
                     number_shipments=task.number_shipments,
-                    path_files=name_folder)
+                    path_files=f"task_{id}")
 
         await self.__repository.add(task)
 
@@ -30,7 +31,8 @@ class SettingsProtoServices:
 
         task = await self.__repository.get(id)
 
-        list_files = PathExtend(task.path_files).list_file_in_folder()
+        files = await self.__file_repo.get_list_file(settings_env.minio_default_buckets,
+                                                     f"{task.path_files}/")
 
         settings = Settings(id=task.id,
                             time_work=task.time_work,
@@ -38,13 +40,16 @@ class SettingsProtoServices:
                             type_input=task.type_input,
                             type_output=task.type_output,
                             number_shipments=task.number_shipments,
-                            name_file=list_files)
+                            name_file=files)
         return settings
 
     async def settings_delete(self, id_task: int):
         task: Task = await self.__repository.get(id_task)
-        path = PathExtend(task.path_files)
-        path.delete_dir()
+        files = await self.__file_repo.get_list_file(settings_env.minio_default_buckets,
+                                                     f"{task.path_files}/")
+        for i in files:
+            await self.__file_repo.delete_object(settings_env.minio_default_buckets,
+                                                 f"{task.path_files}/{i}")
         await self.__repository.delete(task)
 
     async def settings_update(self, update_task: UpdateTask):

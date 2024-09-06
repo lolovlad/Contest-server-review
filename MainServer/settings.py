@@ -13,5 +13,22 @@ class Settings(BaseSettings):
     postgres_password: str
     pgport: int
 
+    redis_password: str
+    redis_user: str
+    redis_user_password: str
+
+    redis_host: str
+    redis_port: int
+
+    minio_access_key: str
+    minio_secret_key: str
+    minio_default_buckets: str
+    minio_host: str
+    minio_port: str
+
+    minio_root_user: str
+    minio_root_password: str
+
+
 
 settings = Settings(_env_file="settings_server_debug.env", _env_file_encoding="utf-8")

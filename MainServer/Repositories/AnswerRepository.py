@@ -4,13 +4,20 @@ from ..tables import Answer
 from sqlalchemy import select, func, and_, desc
 from ..database import get_session
 
+from ..redis import get_session as redis_get_session
+from redis.asyncio import Redis
+from ..Models import StartCheckMessage
+
 from typing import List
 
 
 class AnswerRepository:
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self,
+                 session: AsyncSession = Depends(get_session),
+                 redis_session: Redis = Depends(redis_get_session)):
         self.__session: AsyncSession = session
+        self.__redis_session: Redis = redis_session
 
     async def count_row(self) -> int:
         response = select(func.count(Answer.id))
@@ -94,3 +101,9 @@ class AnswerRepository:
 
         result = await self.__session.execute(response)
         return result.unique().scalars().all()
+
+    async def send_message_to_checker(self, message: StartCheckMessage):
+        try:
+            await self.__redis_session.lpush("load_review", message.model_dump_json())
+        except Exception:
+            pass

@@ -29,8 +29,8 @@ async def send_answer(id_task: int,
                                              file,
                                              id_contest,
                                              type_task)
-    if type_task == "programming":
-        background_tasks.add_task(check_answer, answer, task)
+    #if type_task == "programming":
+    #    background_tasks.add_task(check_answer, answer, task)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={"message": "answer cheking"}

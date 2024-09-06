@@ -2,29 +2,28 @@ from fastapi import Depends
 from Classes.PathExtend import PathExtend
 from ..Models import SettingsTest, Test, ChunkTest, SettingsTestStr, ChunkTestReturn
 
-from ..Repositories import TaskRepository
+from ..Repositories import TaskRepository, FileBucketRepository
 from ..tables import Task
 from ..Models.TaskTestSettings import FileTaskTest
 
-from json import load
+from ..settings import settings
+
+from json import loads
 
 
 class TaskFileSettingsTestService:
-    def __init__(self, repo_task: TaskRepository = Depends()):
+    def __init__(self,
+                 repo_task: TaskRepository = Depends(),
+                 repo_file: FileBucketRepository = Depends()):
         self.__repository: TaskRepository = repo_task
-
-    async def __find_json_file(self, path: PathExtend):
-        for name in path.list_file_in_folder():
-            if name.endswith("json"):
-                return PathExtend(path.abs_path(), name)
-        return ""
+        self.__repo_file: FileBucketRepository = repo_file
 
     async def __get_model_json(self, id_task: int):
         task = await self.__repository.get(id_task)
-        path = PathExtend(task.path_files)
-        filename = await self.__find_json_file(path)
-        with open(filename.abs_path(), "r") as file:
-            file_json = FileTaskTest(**load(file))
+        data = await self.__repo_file.get_file(settings.minio_default_buckets,
+                                               f"{task.path_files}/setting.json")
+        file_json = FileTaskTest(**loads(data))
+        path = f"{task.path_files}/"
         return path, file_json
 
     async def get_all_settings_tests(self, id: int) -> list[SettingsTestStr]:
@@ -54,11 +53,17 @@ class TaskFileSettingsTestService:
 
         list_test = []
         for test in chunk.tests:
-            k = PathExtend(path.abs_path(), test.filling_type_variable).abs_path()
+
+            input_test = await self.__repo_file.get_file(settings.minio_default_buckets,
+                                                         f"{path}{test.filling_type_variable}")
+
+            output_test = await self.__repo_file.get_file(settings.minio_default_buckets,
+                                                          f"{path}{test.answer}")
+
             list_test.append(Test(
                 score=test.score,
-                filling_type_variable=open(PathExtend(path.abs_path(), test.filling_type_variable).abs_path(), "rb").read(),
-                answer=open(PathExtend(path.abs_path(), test.answer).abs_path(), "rb").read()
+                filling_type_variable=input_test.decode("utf-8"),
+                answer=output_test.decode("utf-8")
             ))
 
         proto_chunk = ChunkTestReturn(

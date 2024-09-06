@@ -9,7 +9,7 @@ router = APIRouter(prefix="/files", tags=["files"])
 async def upload_files(id_task: int,
                        file: UploadFile,
                        file_service: FileServices = Depends()):
-    await file_service.upload_file(id_task, file)
+    await file_service.upload_file_s3(id_task, file)
     return {"filenames": file.filename}
 
 
@@ -17,7 +17,7 @@ async def upload_files(id_task: int,
 async def upload_json_files(id_task: int,
                             file: UploadFile,
                             file_service: FileServices = Depends()):
-    await file_service.upload_file(id_task, file)
+    await file_service.upload_file_s3(id_task, file)
     return {"filenames": file.filename}
 
 
@@ -27,10 +27,3 @@ async def delete_file(id_task: int,
                       file_service: FileServices = Depends()):
     await file_service.delete_file(id_task, filename)
     return {"filenames": filename}
-
-
-@router.delete("/delete_folder/{id_test}")
-async def delete_folder(id_task: int,
-                        file_service: FileServices = Depends()):
-    file_service.delete_folder(id_task)
-    return {}

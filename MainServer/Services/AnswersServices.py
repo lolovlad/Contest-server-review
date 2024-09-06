@@ -3,10 +3,11 @@ from ..tables import TypeCompilation, Answer, Task, ContestReport
 
 from Classes.PathExtend import PathExtend
 from ..Models.TaskTestSettings import FileTaskTest
-from ..Models import GetAnswer, GetAnswerNew, AnswerReview, PutPointAnswer
+from ..Models import GetAnswer, GetAnswerNew, AnswerReview, PutPointAnswer, StartCheckMessage
+
+from ..Models.AnswerSettings import AnswerSettings
 
 from sqlalchemy import func
-
 
 from json import load, dumps
 from datetime import datetime
@@ -20,11 +21,13 @@ class AnswersServices:
                  repo_task: TaskRepository = Depends(),
                  repo_answer: AnswerRepository = Depends(),
                  repo_type_compilation: TypeCompilationRepository = Depends(),
-                 repo_contest_report: ContestReportRepository = Depends()):
+                 repo_contest_report: ContestReportRepository = Depends(),
+                 repo_file: FileBucketRepository = Depends()):
         self.__repo_task: TaskRepository = repo_task
         self.__repo_answer: AnswerRepository = repo_answer
         self.__repo_type_compil: TypeCompilationRepository = repo_type_compilation
         self.__repo_contest_report: ContestReportRepository = repo_contest_report
+        self.__repo_file: FileBucketRepository = repo_file
         self.__count_item: int = 20
 
     @property
@@ -67,33 +70,34 @@ class AnswersServices:
                           id_contest: int,
                           type_task: str):
 
+        compiler = await self.__repo_type_compil.get(id_compilation)
+
         if type_task == "programming":
-            path_settings, file_json = await self.__get_model_json(id_task)
-            compiler = await self.__repo_type_compil.get(id_compilation)
-            name_file = PathExtend.create_file_name(compiler.extension)
+            name_file = PathExtend.create_file_name(f"{compiler.extension}")
         else:
             name_file = PathExtend.create_file_name(".txt")
-        string_path_file = f"Answers/{id_task}_{id_user}/{name_file}"
-        path_file = PathExtend("Answers", f"{id_task}_{id_user}", name_file)
-        path_file.create_folder()
 
-        async with open_aio(str(path_file), 'wb') as out_file:
-            while content := await program_file.read(1024):
-                await out_file.write(content)
+        file_key = f"task_{id_task}_user_{id_user}/{name_file}"
+
+        content = await program_file.read()
+
+        await self.__repo_file.upload_file("answer", file_key, content, program_file.content_type)
+
         if type_task == "programming":
             answer = Answer(
                 id_user=id_user,
                 id_task=id_task,
                 id_contest=id_contest,
                 type_compiler=compiler.id,
-                path_programme_file=string_path_file
+                path_programme_file=file_key,
+                is_completed=False
             )
         else:
             answer = Answer(
                 id_user=id_user,
                 id_task=id_task,
                 id_contest=id_contest,
-                path_programme_file=string_path_file,
+                path_programme_file=file_key,
                 total="OK",
                 time="0",
                 memory_size=0,
@@ -104,6 +108,20 @@ class AnswersServices:
         answer = await self.__repo_answer.add(answer)
 
         task = await self.__repo_task.get(id_task)
+
+        await self.__repo_answer.send_message_to_checker(StartCheckMessage(
+                id_trase=str(answer.id),
+                lang=compiler.extension,
+                path_file_test=f"contest/{task.path_files}",
+                path_file_answer=f"answer/{answer.path_programme_file}",
+                settings=AnswerSettings(
+                    type_input=task.type_input,
+                    type_output=task.type_output,
+                    timeout=task.time_work,
+                    max_size_memory=int(task.size_raw),
+                    path_compiler=compiler.path_commands
+                )
+        ))
 
         return answer, task
 
