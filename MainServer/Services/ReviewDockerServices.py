@@ -1,8 +1,12 @@
 from ..redis import async_session as redis_session
 from ..database import async_session as db_session
 
+from sqlalchemy import select
+
 from ..Models.MessageRedis import ResultCheckMessage
-from ..tables import Answer
+from ..tables import Answer, TableContest
+
+from sqlalchemy.orm.attributes import flag_modified
 
 
 class ReviewDockerServices:
@@ -15,7 +19,7 @@ class ReviewDockerServices:
             message = await c.brpop(["container_message"])
             return ResultCheckMessage.model_validate_json(message[1])
 
-    async def save_result_in_db(self, message: ResultCheckMessage):
+    async def save_result_in_db(self, message: ResultCheckMessage) -> Answer:
         async with self.__db_session() as session:
             answer = await session.get(Answer, int(message.trace_uuid))
 
@@ -33,3 +37,25 @@ class ReviewDockerServices:
                 await session.commit()
             except:
                 await session.rollback()
+
+            return answer
+
+    async def save_max_result_in_table(self, answer: Answer):
+        async with self.__db_session() as session:
+            request = select(TableContest).where(TableContest.id_contest == answer.id_contest)
+            result = await session.execute(request)
+            table = result.scalars().first()
+
+            task_result = table.table_result[str(answer.id_user)]["task"][str(answer.id_task)]
+
+            if task_result["points"] <= answer.points:
+                table.table_result[str(answer.id_user)]["task"][str(answer.id_task)]["points"] = answer.points
+                table.table_result[str(answer.id_user)]["task"][str(answer.id_task)]["total"] = answer.total
+
+                flag_modified(table, "table_result")
+                session.add(table)
+                await session.commit()
+
+
+
+

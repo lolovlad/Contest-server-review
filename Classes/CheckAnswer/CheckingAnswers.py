@@ -6,7 +6,7 @@ from typing import List, Set
 
 
 from MainServer.Models.TaskTestSettings import FileTaskTest, CheckType, TypeTest, ChunkTest
-from MainServer.tables import Answer, ContestReport, Task
+from MainServer.tables import Answer, Task
 
 from .InputData import InputData
 from .StartFileProgram import StartFileProgram
@@ -263,33 +263,3 @@ async def safe_answer(answer: Answer):
             await session.rollback()
 
 
-async def add_max_result(answer: Answer):
-    async with async_session() as session:
-        request = select(ContestReport). \
-            where(ContestReport.id_task == answer.id_task). \
-            where(ContestReport.id_user == answer.id_user).\
-            where(ContestReport.id_contest == answer.id_contest)
-        result = await session.execute(request)
-        get_cur = result.scalars().first()
-
-        if get_cur is not None:
-            if answer.points > get_cur.answer.points:
-                get_cur.id_answer = answer.id
-                try:
-                    session.add(get_cur)
-                    await session.commit()
-                except:
-                    await session.rollback()
-        else:
-            get_cur = ContestReport(
-                id_contest=answer.id_contest,
-                id_task=answer.id_task,
-                id_user=answer.id_user,
-                id_team=0,
-                id_answer=answer.id
-            )
-            try:
-                session.add(get_cur)
-                await session.commit()
-            except:
-                await session.rollback()

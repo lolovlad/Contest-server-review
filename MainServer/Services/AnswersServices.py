@@ -1,5 +1,5 @@
 from fastapi import Depends, UploadFile
-from ..tables import TypeCompilation, Answer, Task, ContestReport
+from ..tables import TypeCompilation, Answer, Task
 
 from Classes.PathExtend import PathExtend
 from ..Models.TaskTestSettings import FileTaskTest
@@ -143,7 +143,6 @@ class AnswersServices:
             proto_answers.append(GetAnswer(
                 date_send=date.isoformat(),
                 id=answer.id,
-                id_team=answer.id_team,
                 id_user=answer.id_user,
                 id_task=answer.id_task,
                 id_contest=answer.id_contest,
@@ -159,10 +158,8 @@ class AnswersServices:
     async def get_answers_contest(self, id_contest: int, id: int) -> list[GetAnswer]:
         ans = await self.__repo_answer.get_by_id_contest(id_contest)
         if ans is not None:
-            if ans.id_team == 0:
-                answers = await self.__repo_contest_report.get_max_points_by_contest_and_user(id_contest, id)
-            else:
-                answers = await self.__repo_contest_report.get_max_points_by_contest_and_team(id_contest, ans.id_team)
+            answers = await self.__repo_contest_report.get_max_points_by_contest_and_user(id_contest, id)
+
 
         else:
             answers = []
@@ -187,11 +184,12 @@ class AnswersServices:
 
     async def get_report_file(self, id_answer: int) -> str:
         answer = await self.__repo_answer.get(id_answer)
+
         file_report = answer.path_report_file
-        with open(file_report, "r") as file:
-            file_json = load(file)
-        json_answer = dumps(file_json)
-        return json_answer
+        chunk = file_report.split("/")
+        bucket, file_key = chunk[0], "/".join(chunk[1:])
+        file_content = await self.__repo_file.get_file(bucket, file_key)
+        return file_content.decode("utf-8")
 
     async def get_list_answers_page(self,
                                     id_contest: int,
@@ -218,25 +216,26 @@ class AnswersServices:
         return review
 
     async def update_point_answer(self, id_answer: int, answer_data: PutPointAnswer):
-        answer = await self.__repo_answer.get(id_answer)
-        answer.points = answer_data.points
-        await self.__repo_answer.update(answer)
-
-        get_cur = await self.__repo_contest_report.get_by_contest_task_user(
-            answer.id_contest,
-            answer.id_task,
-            answer.id_user
-        )
-        if get_cur is not None:
-            if answer.points > get_cur.answer.points:
-                get_cur.id_answer = answer.id
-                await self.__repo_contest_report.update(get_cur)
-        else:
-            get_cur = ContestReport(
-                id_contest=answer.id_contest,
-                id_task=answer.id_task,
-                id_user=answer.id_user,
-                id_team=0,
-                id_answer=answer.id
-            )
-            await self.__repo_contest_report.add(get_cur)
+        pass
+        #answer = await self.__repo_answer.get(id_answer)
+        #answer.points = answer_data.points
+        #await self.__repo_answer.update(answer)
+#
+        #get_cur = await self.__repo_contest_report.get_by_contest_task_user(
+        #    answer.id_contest,
+        #    answer.id_task,
+        #    answer.id_user
+        #)
+        #if get_cur is not None:
+        #    if answer.points > get_cur.answer.points:
+        #        get_cur.id_answer = answer.id
+        #        await self.__repo_contest_report.update(get_cur)
+        #else:
+        #    get_cur = ContestReport(
+        #        id_contest=answer.id_contest,
+        #        id_task=answer.id_task,
+        #        id_user=answer.id_user,
+        #        id_team=0,
+        #        id_answer=answer.id
+        #    )
+        #    await self.__repo_contest_report.add(get_cur)

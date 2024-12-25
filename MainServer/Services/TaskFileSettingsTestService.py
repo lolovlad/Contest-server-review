@@ -1,5 +1,4 @@
 from fastapi import Depends
-from Classes.PathExtend import PathExtend
 from ..Models import SettingsTest, Test, ChunkTest, SettingsTestStr, ChunkTestReturn
 
 from ..Repositories import TaskRepository, FileBucketRepository

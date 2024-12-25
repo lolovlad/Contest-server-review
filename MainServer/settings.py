@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     minio_root_user: str
     minio_root_password: str
 
+    websocket_server_host: str
+    websocket_server_port: int
+
 
 
 settings = Settings(_env_file="settings_server_debug.env", _env_file_encoding="utf-8")

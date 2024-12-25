@@ -4,6 +4,9 @@ from sqlalchemy import Column, Integer, String, LargeBinary, \
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
+
 from datetime import datetime
 
 base = declarative_base()
@@ -39,7 +42,6 @@ class Answer(base):
 
     date_send = Column(DateTime, nullable=False, default=datetime.now())
     id = Column(Integer, primary_key=True, autoincrement=True)
-    id_team = Column(Integer, default=0)
     id_user = Column(Integer)
     id_task = Column(Integer, ForeignKey('task.id'))
     id_contest = Column(Integer)
@@ -58,13 +60,8 @@ class Answer(base):
     compilation = relationship('TypeCompilation', backref='type_compilation', lazy='joined')
 
 
-class ContestReport(base):
-    __tablename__ = "contest_report"
+class TableContest(base):
+    __tablename__ = "table_contest"
     id = Column(Integer, primary_key=True, autoincrement=True)
     id_contest = Column(Integer, nullable=False)
-    id_task = Column(Integer, nullable=False, default=0)
-    id_user = Column(Integer, nullable=False)
-    id_team = Column(Integer, nullable=False)
-    id_answer = Column(Integer, ForeignKey('answer.id'))
-    answer = relationship('Answer', backref='answer', lazy='joined')
-
+    table_result = Column(MutableDict.as_mutable(JSONB), nullable=True, default={})

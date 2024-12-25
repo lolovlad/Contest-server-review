@@ -5,6 +5,8 @@ from .compiler import router as router_compiler
 from .answer import router as router_answer
 from .contest import router as router_contest
 from .file import router as router_file
+from .table_answer import router as table_router
+
 
 router = APIRouter(prefix="/v1")
 router.include_router(router_settings)
@@ -13,5 +15,6 @@ router.include_router(router_compiler)
 router.include_router(router_answer)
 router.include_router(router_contest)
 router.include_router(router_file)
+router.include_router(table_router)
 
 

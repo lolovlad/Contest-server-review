@@ -1,5 +1,4 @@
 from fastapi import Depends
-from Classes.PathExtend import PathExtend
 
 from ..Models import PostTask, Settings, UpdateTask
 from ..database import get_session
@@ -45,11 +44,14 @@ class SettingsProtoServices:
 
     async def settings_delete(self, id_task: int):
         task: Task = await self.__repository.get(id_task)
-        files = await self.__file_repo.get_list_file(settings_env.minio_default_buckets,
-                                                     f"{task.path_files}/")
-        for i in files:
-            await self.__file_repo.delete_object(settings_env.minio_default_buckets,
-                                                 f"{task.path_files}/{i}")
+        try:
+            files = await self.__file_repo.get_list_file(settings_env.minio_default_buckets,
+                                                         f"{task.path_files}/")
+            for i in files:
+                await self.__file_repo.delete_object(settings_env.minio_default_buckets,
+                                                     f"{task.path_files}/{i}")
+        except Exception:
+            pass
         await self.__repository.delete(task)
 
     async def settings_update(self, update_task: UpdateTask):
