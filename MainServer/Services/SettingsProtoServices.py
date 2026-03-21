@@ -23,7 +23,6 @@ class SettingsProtoServices:
                     type_input=task.type_input,
                     number_shipments=task.number_shipments,
                     path_files=f"task_{id}")
-
         await self.__repository.add(task)
 
     async def settings_get(self, id: int) -> Settings:

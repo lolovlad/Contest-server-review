@@ -20,4 +20,4 @@ class UpdateTask(BaseTask):
 
 class Settings(BaseTask):
     id: int
-    name_file: list[str]
+    name_file: list[str] | None
